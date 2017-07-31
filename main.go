@@ -6,9 +6,13 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
-	"time"
 
 	"strconv"
+
+	"time"
+
+	"bytes"
+	"os"
 
 	"github.com/gizak/termui"
 )
@@ -23,7 +27,14 @@ var StreamID int = 0
 var StreamFol bool = true
 
 func main() {
-	Streams = getStreams(StreamFol)
+	var err error
+	var cmd *exec.Cmd
+
+	dataBase, err := initDB()
+	if err != nil {
+		log.Panic(err)
+	}
+	Streams = getStreams(StreamFol, dataBase)
 	var strs []string
 	for id, stream := range Streams {
 		if id == 0 {
@@ -32,7 +43,7 @@ func main() {
 			strs = append(strs, stream.DisplayName)
 		}
 	}
-	err := termui.Init()
+	err = termui.Init()
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +88,12 @@ func main() {
 
 	termui.Render(termui.Body)
 	termui.Handle("/sys/kbd/q", func(event termui.Event) {
-		termui.StopLoop()
+		if cmd != nil {
+			cmd.Process.Kill()
+			cmd = nil
+		} else {
+			termui.StopLoop()
+		}
 	})
 	// /sys/kbd/<down>
 	// /sys/kbd/<up>
@@ -103,7 +119,7 @@ func main() {
 		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
 		termui.Render(parNotiHelp)
 		parNotiHelp.Text = helpText
-		Streams = getStreams(StreamFol)
+		Streams = getStreams(StreamFol, dataBase)
 		StreamID = 0
 		var strs []string
 		for id, stream := range Streams {
@@ -125,7 +141,7 @@ func main() {
 		termui.Render(parNotiHelp)
 		parNotiHelp.Text = helpText
 		StreamFol = false
-		Streams = getStreams(StreamFol)
+		Streams = getStreams(StreamFol, dataBase)
 		StreamID = 0
 		var strs []string
 		for id, stream := range Streams {
@@ -147,7 +163,7 @@ func main() {
 		termui.Render(parNotiHelp)
 		parNotiHelp.Text = helpText
 		StreamFol = true
-		Streams = getStreams(StreamFol)
+		Streams = getStreams(StreamFol, dataBase)
 		StreamID = 0
 		var strs []string
 		for id, stream := range Streams {
@@ -164,11 +180,29 @@ func main() {
 		parLength.Text = videoLen(Streams[StreamID].Length)
 		termui.Render(termui.Body)
 	})
+	termui.Handle("/sys/kbd/<enter>", func(event termui.Event) {
+		parNotiHelp.Text = "[Запускаю streamlink](fg-red)"
+		termui.Render(parNotiHelp)
+		cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", Streams[StreamID].URL)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go func() {
+			cmd.Wait()
+			f, _ := os.Create("out")
+			f.Write(out.Bytes())
+			parNotiHelp.Text = helpText
+			termui.Render(parNotiHelp)
+		}()
+	})
 	termui.Handle("/sys/timer/5m", func(event termui.Event) {
 		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
 		termui.Render(parNotiHelp)
 		parNotiHelp.Text = helpText
-		Streams = getStreams(StreamFol)
+		Streams = getStreams(StreamFol, dataBase)
 		StreamID = 0
 		var strs []string
 		for id, stream := range Streams {
@@ -223,46 +257,45 @@ func keyUpDownUI(event termui.Event) []string {
 }
 
 // TODO: err ->
-func getStreams(streamsFol bool) (streams []Stream) {
-	var accessToken string
-
-	dataBase, err := initDB()
-	if err != nil {
-		log.Panic(err)
-	}
-	accessTokenRow, err := dataBase.SelectAccessToken()
-	if err != nil {
-		log.Panic(err)
-	}
-	accessToken = accessTokenRow.accessToken
-	if accessTokenRow.accessToken == "" {
-		u, _ := url.Parse("https://api.twitch.tv/kraken/oauth2/authorize")
-		q := u.Query()
-		q.Set("client_id", clientID)
-		q.Set("redirect_uri", redirectURI)
-		q.Set("response_type", "token")
-		q.Set("scope", "user_read")
-		u.RawQuery = q.Encode()
-
-		fmt.Println("Open URL: ", u.String())
-		openbrowser(u.String())
-
-		srv := startHttpServer()
-		time.Sleep(30 * time.Second)
-		if err := srv.Shutdown(nil); err != nil {
-			panic(err)
-		}
+func getStreams(streamsFol bool, dataBase DB) (streams []Stream) {
+	tw := TWInit(clientID, redirectURI)
+	if streamsFol == false {
+		streams = tw.GetLive()
+	} else {
 		accessTokenRow, err := dataBase.SelectAccessToken()
 		if err != nil {
 			log.Panic(err)
 		}
-		accessToken = accessTokenRow.accessToken
-	}
-	tw := TWInit(clientID, redirectURI)
-	if streamsFol {
-		streams = tw.GetOnline(accessToken)
-	} else {
-		streams = tw.GetLive()
+		if accessTokenRow.accessToken == "" {
+			u, _ := url.Parse("https://api.twitch.tv/kraken/oauth2/authorize")
+			q := u.Query()
+			q.Set("client_id", clientID)
+			q.Set("redirect_uri", redirectURI)
+			q.Set("response_type", "token")
+			q.Set("scope", "user_read")
+			u.RawQuery = q.Encode()
+			fmt.Println("Open url: ", u.String())
+
+			openbrowser(u.String())
+
+			l, err := StartHttpServer()
+			if err != nil {
+				panic(err)
+			}
+			for ShutdownServer == false {
+				time.Sleep(1 * time.Second)
+			}
+			l.Close()
+
+			//if err := srv.Shutdown(nil); err != nil {
+			//	fmt.Println(err)
+			//}
+			accessTokenRow, err = dataBase.SelectAccessToken()
+			if err != nil {
+				log.Panic(err)
+			}
+		}
+		streams = tw.GetOnline(accessTokenRow.accessToken)
 	}
 	return streams
 }

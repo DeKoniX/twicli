@@ -5,23 +5,41 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 )
 
-func startHttpServer() *http.Server {
-	srv := &http.Server{Addr: ":5454"}
+var ShutdownServer bool = false
 
-	http.HandleFunc("/", authTWHandler)
-	http.HandleFunc("/access_token", accessTokenHandler)
-	http.HandleFunc("/js/main.js", mainJSHandler)
+func StartHttpServer() (l net.Listener, err error) {
+	l, err = net.Listen("tcp", fmt.Sprintf(":%d", 5454))
+	if err != nil {
+		return l, err
+	}
+
+	route := http.NewServeMux()
+
+	route.HandleFunc("/", authTWHandler)
+	route.HandleFunc("/access_token", accessTokenHandler)
+	route.HandleFunc("/js/main.js", mainJSHandler)
 
 	go func() {
-		if err := srv.ListenAndServe(); err != nil {
-			log.Printf("Httpserver: ListenAndServe() error: %s", err)
-		}
+		http.Serve(l, route)
 	}()
 
-	return srv
+	//srv := &http.Server{Addr: ":5454"}
+	//
+	//http.HandleFunc("/", authTWHandler)
+	//http.HandleFunc("/access_token", accessTokenHandler)
+	//http.HandleFunc("/js/main.js", mainJSHandler)
+	//
+	//go func() {
+	//	if err := srv.ListenAndServe(); err != nil {
+	//		log.Printf("Httpserver: ListenAndServe() error: %s", err)
+	//	}
+	//}()
+	ShutdownServer = false
+	return l, nil
 }
 
 func mainJSHandler(w http.ResponseWriter, r *http.Request) {
@@ -46,4 +64,5 @@ func accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	dataBase.InsertAccessToken(accessToken)
 	dataBase.db.Close()
+	ShutdownServer = true
 }
