@@ -1,0 +1,1 @@
+(function(){var a,b,c,d;b=window.location.hash.substr(1),a=function(a,b){var c;return c=b.split("="),a[c[0]]=c[1],a},c=b.split("&").reduce(a,{}),void 0!==c.access_token&&(d="http://localhost:5454/access_token?access_token="+c.access_token,window.location=d)}).call(this);
