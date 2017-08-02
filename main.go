@@ -14,19 +14,23 @@ import (
 	"bytes"
 	"os"
 
+	"strings"
+
 	"github.com/gizak/termui"
 )
 
 const clientID = ""
 const redirectURI = "http://localhost:5454"
 
-const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [r] - обновить список стримов [q] - выйти из приложения\n [f] - показать тех к кому ты подписан [o] - показать 10 самых топовых стримов"
+const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [r] - обновить список стримов [q] - выйти из приложения\n [<right>, <left>] - бегать по вкладкам приложения [/] - поиск по Twitch [enter] - запустить streamlink"
 
-var Streams []Stream
-var StreamID int = 0
-var StreamFol bool = true
+// Type: 0 - sub, 1 - top, 2 - ru top, 3 - search
 
 func main() {
+	var Streams []Stream
+	var StreamID int = 0
+	var StreamType int = 0
+
 	var err error
 	var cmd *exec.Cmd
 
@@ -34,7 +38,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	Streams = getStreams(StreamFol, dataBase)
+	Streams = getStreams(StreamType, dataBase, "")
 	var strs []string
 	for id, stream := range Streams {
 		if id == 0 {
@@ -48,6 +52,10 @@ func main() {
 		panic(err)
 	}
 	defer termui.Close()
+
+	parStreamType := termui.NewPar("[<Ваши подписки>](bg-blue) <Топ Twitch> <Топ RU Twitch> <Поиск>")
+	parStreamType.Height = 1
+	parStreamType.Border = false
 
 	lsStreams := termui.NewList()
 	lsStreams.Items = strs
@@ -76,6 +84,9 @@ func main() {
 
 	termui.Body.AddRows(
 		termui.NewRow(
+			termui.NewCol(10, 2, parStreamType),
+		),
+		termui.NewRow(
 			termui.NewCol(3, 0, lsStreams),
 			termui.NewCol(9, 0, parName, parGame, parViewers, parLength),
 		),
@@ -98,28 +109,89 @@ func main() {
 	// /sys/kbd/<down>
 	// /sys/kbd/<up>
 	termui.Handle("/sys/kbd/<down>", func(event termui.Event) {
-		strs = keyUpDownUI(event)
+		strs, StreamID = keyUpDownUI(event, Streams, StreamID)
 		lsStreams.Items = strs
-		parName.Text = Streams[StreamID].Status
-		parGame.Text = Streams[StreamID].Game
-		parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
-		parLength.Text = videoLen(Streams[StreamID].Length)
+		if len(Streams) > 0 {
+			parName.Text = Streams[StreamID].Status
+			parGame.Text = Streams[StreamID].Game
+			parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
+			parLength.Text = videoLen(Streams[StreamID].Length)
+		}
 		termui.Render(termui.Body)
 	})
 	termui.Handle("/sys/kbd/<up>", func(event termui.Event) {
-		strs = keyUpDownUI(event)
+		strs, StreamID = keyUpDownUI(event, Streams, StreamID)
 		lsStreams.Items = strs
-		parName.Text = Streams[StreamID].Status
-		parGame.Text = Streams[StreamID].Game
-		parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
-		parLength.Text = videoLen(Streams[StreamID].Length)
+		if len(Streams) > 0 {
+			parName.Text = Streams[StreamID].Status
+			parGame.Text = Streams[StreamID].Game
+			parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
+			parLength.Text = videoLen(Streams[StreamID].Length)
+		}
+		termui.Render(termui.Body)
+	})
+	termui.Handle("/sys/kbd/<right>", func(event termui.Event) {
+		var strs []string
+		var str string
+		str, StreamType = keyLeftRightUI(event, StreamType)
+		parStreamType.Text = str
+		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
+		termui.Render(parNotiHelp)
+		termui.Render(parStreamType)
+		time.Sleep(10 * time.Millisecond)
+		parNotiHelp.Text = helpText
+		Streams = getStreams(StreamType, dataBase, "")
+		StreamID = 0
+		for id, stream := range Streams {
+			if id == 0 {
+				strs = append(strs, "["+stream.DisplayName+"](fg-white,bg-green)")
+			} else {
+				strs = append(strs, stream.DisplayName)
+			}
+		}
+		lsStreams.Items = strs
+		if len(Streams) > 0 {
+			parName.Text = Streams[StreamID].Status
+			parGame.Text = Streams[StreamID].Game
+			parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
+			parLength.Text = videoLen(Streams[StreamID].Length)
+		}
+		termui.Render(termui.Body)
+	})
+	termui.Handle("/sys/kbd/<left>", func(event termui.Event) {
+		var strs []string
+		var str string
+		str, StreamType = keyLeftRightUI(event, StreamType)
+		parStreamType.Text = str
+		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
+		termui.Render(parNotiHelp)
+		termui.Render(parStreamType)
+		time.Sleep(10 * time.Millisecond)
+		parNotiHelp.Text = helpText
+		Streams = getStreams(StreamType, dataBase, "")
+		StreamID = 0
+		for id, stream := range Streams {
+			if id == 0 {
+				strs = append(strs, "["+stream.DisplayName+"](fg-white,bg-green)")
+			} else {
+				strs = append(strs, stream.DisplayName)
+			}
+		}
+		lsStreams.Items = strs
+		if len(Streams) > 0 {
+			parName.Text = Streams[StreamID].Status
+			parGame.Text = Streams[StreamID].Game
+			parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
+			parLength.Text = videoLen(Streams[StreamID].Length)
+		}
 		termui.Render(termui.Body)
 	})
 	termui.Handle("/sys/kbd/r", func(event termui.Event) {
 		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
 		termui.Render(parNotiHelp)
+		time.Sleep(10 * time.Millisecond)
 		parNotiHelp.Text = helpText
-		Streams = getStreams(StreamFol, dataBase)
+		Streams = getStreams(StreamType, dataBase, "")
 		StreamID = 0
 		var strs []string
 		for id, stream := range Streams {
@@ -130,79 +202,102 @@ func main() {
 			}
 		}
 		lsStreams.Items = strs
-		parName.Text = Streams[StreamID].Status
-		parGame.Text = Streams[StreamID].Game
-		parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
-		parLength.Text = videoLen(Streams[StreamID].Length)
-		termui.Render(termui.Body)
-	})
-	termui.Handle("/sys/kbd/o", func(event termui.Event) {
-		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
-		termui.Render(parNotiHelp)
-		parNotiHelp.Text = helpText
-		StreamFol = false
-		Streams = getStreams(StreamFol, dataBase)
-		StreamID = 0
-		var strs []string
-		for id, stream := range Streams {
-			if id == 0 {
-				strs = append(strs, "["+stream.DisplayName+"](fg-white,bg-green)")
-			} else {
-				strs = append(strs, stream.DisplayName)
-			}
+		if len(Streams) > 0 {
+			parName.Text = Streams[StreamID].Status
+			parGame.Text = Streams[StreamID].Game
+			parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
+			parLength.Text = videoLen(Streams[StreamID].Length)
 		}
-		lsStreams.Items = strs
-		parName.Text = Streams[StreamID].Status
-		parGame.Text = Streams[StreamID].Game
-		parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
-		parLength.Text = videoLen(Streams[StreamID].Length)
-		termui.Render(termui.Body)
-	})
-	termui.Handle("/sys/kbd/f", func(event termui.Event) {
-		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
-		termui.Render(parNotiHelp)
-		parNotiHelp.Text = helpText
-		StreamFol = true
-		Streams = getStreams(StreamFol, dataBase)
-		StreamID = 0
-		var strs []string
-		for id, stream := range Streams {
-			if id == 0 {
-				strs = append(strs, "["+stream.DisplayName+"](fg-white,bg-green)")
-			} else {
-				strs = append(strs, stream.DisplayName)
-			}
-		}
-		lsStreams.Items = strs
-		parName.Text = Streams[StreamID].Status
-		parGame.Text = Streams[StreamID].Game
-		parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
-		parLength.Text = videoLen(Streams[StreamID].Length)
 		termui.Render(termui.Body)
 	})
 	termui.Handle("/sys/kbd/<enter>", func(event termui.Event) {
-		parNotiHelp.Text = "[Запускаю streamlink](fg-red)"
-		termui.Render(parNotiHelp)
-		cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", Streams[StreamID].URL)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		go func() {
-			cmd.Wait()
-			f, _ := os.Create("out")
-			f.Write(out.Bytes())
-			parNotiHelp.Text = helpText
+		if len(Streams) > 0 {
+			if cmd != nil {
+				cmd.Process.Kill()
+				cmd = nil
+				time.Sleep(10 * time.Millisecond)
+			}
+			parNotiHelp.Text = "[Запускаю streamlink](fg-red)"
 			termui.Render(parNotiHelp)
-		}()
+			cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", Streams[StreamID].URL)
+			var out bytes.Buffer
+			cmd.Stdout = &out
+			err := cmd.Start()
+			if err != nil {
+				log.Fatal(err)
+			}
+			go func() {
+				cmd.Wait()
+				f, _ := os.Create("out")
+				f.Write(out.Bytes())
+				parNotiHelp.Text = helpText
+				termui.Render(parNotiHelp)
+			}()
+		}
+	})
+	termui.Handle("/sys/kbd//", func(event termui.Event) {
+		if event.Path == "/sys/kbd//" {
+			parNotiHelp.Text = ""
+			termui.Render(parNotiHelp)
+
+			myHandlers := make(map[string]func(termui.Event))
+			for path, handle := range termui.DefaultEvtStream.Handlers {
+				myHandlers[path] = handle
+			}
+			termui.ResetHandlers()
+
+			termui.Handle("/sys/kbd", func(event2 termui.Event) {
+				keys := strings.Split(event2.Path, "/")
+				parNotiHelp.Text = parNotiHelp.Text + keys[len(keys)-1]
+				termui.Render(parNotiHelp)
+			})
+
+			termui.Handle("/sys/kbd/<space>", func(event2 termui.Event) {
+				parNotiHelp.Text = parNotiHelp.Text + " "
+				termui.Render(parNotiHelp)
+			})
+
+			termui.Handle("/sys/kbd/C-8", func(event2 termui.Event) {
+				parNotiHelp.Text = parNotiHelp.Text[0 : len(parNotiHelp.Text)-1]
+				termui.Render(parNotiHelp)
+			})
+
+			termui.Handle("/sys/kbd/<enter>", func(event2 termui.Event) {
+				StreamType = 3
+				Streams = getStreams(StreamType, dataBase, parNotiHelp.Text)
+				StreamID = 0
+				var strs []string
+				for id, stream := range Streams {
+					if id == 0 {
+						strs = append(strs, "["+stream.DisplayName+"](fg-white,bg-green)")
+					} else {
+						strs = append(strs, stream.DisplayName)
+					}
+				}
+				lsStreams.Items = strs
+				if len(Streams) > 0 {
+					parName.Text = Streams[StreamID].Status
+					parGame.Text = Streams[StreamID].Game
+					parViewers.Text = strconv.Itoa(Streams[StreamID].Viewers)
+					parLength.Text = videoLen(Streams[StreamID].Length)
+				}
+				parNotiHelp.Text = helpText + "\n Поиск: [" + parNotiHelp.Text + "](fg-blue)"
+				parStreamType.Text = "<Ваши подписки> <Топ Twitch> <Топ RU Twitch> [<Поиск>](bg-blue)"
+
+				termui.Render(termui.Body)
+
+				termui.ResetHandlers()
+				for path, handle := range myHandlers {
+					termui.Handle(path, handle)
+				}
+			})
+		}
 	})
 	termui.Handle("/sys/timer/5m", func(event termui.Event) {
 		parNotiHelp.Text = "[Обновляю список стримов](fg-red)"
 		termui.Render(parNotiHelp)
 		parNotiHelp.Text = helpText
-		Streams = getStreams(StreamFol, dataBase)
+		Streams = getStreams(StreamType, dataBase, "")
 		StreamID = 0
 		var strs []string
 		for id, stream := range Streams {
@@ -228,40 +323,80 @@ func main() {
 	termui.Loop()
 }
 
-func keyUpDownUI(event termui.Event) []string {
-	streamCount := len(Streams) - 1
+func keyUpDownUI(event termui.Event, streams []Stream, streamID int) (strs []string, _ int) {
+	streamCount := len(streams) - 1
 	if event.Path == "/sys/kbd/<down>" {
-		if StreamID == streamCount {
-			StreamID = 0
+		if streamID == streamCount {
+			streamID = 0
 		} else {
-			StreamID += 1
+			streamID += 1
 		}
 	}
 	if event.Path == "/sys/kbd/<up>" {
-		if StreamID == 0 {
-			StreamID = streamCount
+		if streamID == 0 {
+			streamID = streamCount
 		} else {
-			StreamID -= 1
+			streamID -= 1
 		}
 	}
 
-	var strs []string
-	for id, stream := range Streams {
-		if id == StreamID {
+	for id, stream := range streams {
+		if id == streamID {
 			strs = append(strs, "["+stream.DisplayName+"](fg-white,bg-green)")
 		} else {
 			strs = append(strs, stream.DisplayName)
 		}
 	}
-	return strs
+	return strs, streamID
+}
+
+func keyLeftRightUI(event termui.Event, streamType int) (str string, _ int) {
+	var streamTypeCount = 2
+
+	switch event.Path {
+	case "/sys/kbd/<right>":
+		streamType += 1
+
+		if streamType > streamTypeCount {
+			streamType = 0
+		}
+	case "/sys/kbd/<left>":
+		streamType -= 1
+
+		if streamType < 0 {
+			streamType = streamTypeCount
+		}
+	}
+
+	strs := [4]string{
+		"<Ваши подписки>",
+		"<Топ Twitch>",
+		"<Топ RU Twitch>",
+		"<Поиск>",
+	}
+
+	for id, s := range strs {
+		if id == streamType {
+			s = "[" + s + "](bg-blue)"
+		}
+		str += s + " "
+	}
+
+	return str, streamType
 }
 
 // TODO: err ->
-func getStreams(streamsFol bool, dataBase DB) (streams []Stream) {
+func getStreams(streamsType int, dataBase DB, search string) (streams []Stream) {
 	tw := TWInit(clientID, redirectURI)
-	if streamsFol == false {
-		streams = tw.GetLive()
-	} else {
+
+	switch streamsType {
+	case 1:
+		streams = tw.GetLive("")
+	case 2:
+		streams = tw.GetLive("ru")
+	case 3:
+		streams = tw.GetSearch(search)
+	case 0:
 		accessTokenRow, err := dataBase.SelectAccessToken()
 		if err != nil {
 			log.Panic(err)
@@ -276,7 +411,7 @@ func getStreams(streamsFol bool, dataBase DB) (streams []Stream) {
 			u.RawQuery = q.Encode()
 			fmt.Println("Open url: ", u.String())
 
-			openbrowser(u.String())
+			openBrowser(u.String())
 
 			l, err := StartHttpServer()
 			if err != nil {
@@ -286,10 +421,6 @@ func getStreams(streamsFol bool, dataBase DB) (streams []Stream) {
 				time.Sleep(1 * time.Second)
 			}
 			l.Close()
-
-			//if err := srv.Shutdown(nil); err != nil {
-			//	fmt.Println(err)
-			//}
 			accessTokenRow, err = dataBase.SelectAccessToken()
 			if err != nil {
 				log.Panic(err)
@@ -300,7 +431,7 @@ func getStreams(streamsFol bool, dataBase DB) (streams []Stream) {
 	return streams
 }
 
-func openbrowser(url string) {
+func openBrowser(url string) {
 	var err error
 
 	switch runtime.GOOS {
