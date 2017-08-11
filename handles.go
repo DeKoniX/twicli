@@ -41,19 +41,23 @@ func (app *Application) upDownHandle(event termui.Event) {
 func (app *Application) leftRightHandle(event termui.Event) {
 	var str string
 
-	var streamTypeCount = 2
+	var streamTypeCount = 3
 	switch event.Path {
 	case "/sys/kbd/<right>":
 		app.StreamType += 1
 
-		if app.StreamType > streamTypeCount {
+		if app.StreamType > streamTypeCount-1 && app.Search == "" || app.StreamType > streamTypeCount {
 			app.StreamType = 0
 		}
 	case "/sys/kbd/<left>":
 		app.StreamType -= 1
 
 		if app.StreamType < 0 {
-			app.StreamType = streamTypeCount
+			if app.Search != "" {
+				app.StreamType = streamTypeCount
+			} else {
+				app.StreamType = streamTypeCount - 1
+			}
 		}
 	}
 	strs := [4]string{
@@ -74,11 +78,15 @@ func (app *Application) leftRightHandle(event termui.Event) {
 	termui.Render(app.UI.parStreamType)
 
 	app.StreamID = 0
-	app.updateStreamList(true, "")
+	if app.StreamType == 3 {
+		app.updateStreamList(true, app.Search)
+	} else {
+		app.updateStreamList(true, "")
+	}
 }
 
 func (app *Application) updateHandle(event termui.Event) {
-	app.updateStreamList(true, "")
+	app.updateStreamList(true, app.Search)
 }
 
 func (app *Application) runHandle(event termui.Event) {
@@ -109,7 +117,10 @@ func (app *Application) runHandle(event termui.Event) {
 
 func (app *Application) searchHandle(event termui.Event) {
 	if event.Path == "/sys/kbd//" {
+		app.Search = ""
 		app.UI.parNotiHelp.Text = ""
+		app.UI.parNotiHelp.BorderLabel = "Поиск:"
+		app.UI.parNotiHelp.Border = true
 		termui.Render(app.UI.parNotiHelp)
 
 		myHandlers := make(map[string]func(termui.Event))
@@ -137,9 +148,11 @@ func (app *Application) searchHandle(event termui.Event) {
 		termui.Handle("/sys/kbd/<enter>", func(event2 termui.Event) {
 			app.StreamType = 3
 			app.StreamID = 0
-			search := app.UI.parNotiHelp.Text
-			app.updateStreamList(true, app.UI.parNotiHelp.Text)
-			app.UI.parNotiHelp.Text = helpText + "\n Поиск: [" + search + "](fg-blue)"
+			app.Search = app.UI.parNotiHelp.Text
+			app.updateStreamList(true, app.Search)
+			app.UI.parNotiHelp.Text = helpText + "\n Поиск: [" + app.Search + "](fg-blue)"
+			app.UI.parNotiHelp.BorderLabel = ""
+			app.UI.parNotiHelp.Border = false
 			app.UI.parStreamType.Text = "<Ваши подписки> <Топ Twitch> <Топ RU Twitch> [<Поиск>](bg-blue)"
 
 			termui.Render(termui.Body)

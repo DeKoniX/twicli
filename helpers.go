@@ -21,6 +21,9 @@ func (app *Application) updateStreamList(update bool, search string) {
 		time.Sleep(10 * time.Millisecond)
 		app.UI.parNotiHelp.Text = helpText
 		app.Streams = getStreams(app.StreamType, app.DB, search)
+		if search != "" {
+			app.UI.parNotiHelp.Text = helpText + "\n Поиск: [" + app.Search + "](fg-blue)"
+		}
 	}
 	for id, stream := range app.Streams {
 		if id == app.StreamID {

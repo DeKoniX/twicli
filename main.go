@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os/exec"
+	"time"
 
 	"strconv"
 
@@ -32,6 +33,7 @@ type Application struct {
 	Streams    []Stream
 	StreamID   int
 	StreamType int
+	Search     string
 	Cmd        *exec.Cmd
 }
 
@@ -110,6 +112,7 @@ func main() {
 	termui.Body.Align()
 
 	termui.Render(termui.Body)
+
 	termui.Handle("/sys/kbd/q", app.quitHandle)
 	termui.Handle("/sys/kbd/<down>", app.upDownHandle)
 	termui.Handle("/sys/kbd/<up>", app.upDownHandle)
@@ -124,5 +127,9 @@ func main() {
 		termui.Clear()
 		termui.Render(termui.Body)
 	})
+
+	termui.Merge("timer", termui.NewTimerCh(5*time.Minute))
+	termui.Handle("/timer/5m", app.updateHandle)
+
 	termui.Loop()
 }
