@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,6 +37,20 @@ func (app *Application) upDownHandle(event termui.Event) {
 		}
 	}
 	app.updateStreamList(false, "")
+}
+
+func (app *Application) pageUpPageDownHandle(event termui.Event) {
+	app.StreamID = 0
+	switch event.Path {
+	case "/sys/kbd/<next>":
+		app.StreamPage += 1
+	case "/sys/kbd/<previous>":
+		if app.StreamPage != 0 {
+			app.StreamPage -= 1
+		}
+	}
+	app.UI.parPageStream.Text = "[" + strconv.Itoa(app.StreamPage+1) + "](fg-green)"
+	app.updateStreamList(true, app.Search)
 }
 
 func (app *Application) leftRightHandle(event termui.Event) {
@@ -76,6 +91,9 @@ func (app *Application) leftRightHandle(event termui.Event) {
 
 	app.UI.parStreamType.Text = str
 	termui.Render(app.UI.parStreamType)
+
+	app.StreamPage = 0
+	app.UI.parPageStream.Text = "[" + strconv.Itoa(app.StreamPage+1) + "](fg-green)"
 
 	app.StreamID = 0
 	if app.StreamType == 3 {
@@ -146,6 +164,8 @@ func (app *Application) searchHandle(event termui.Event) {
 		})
 
 		termui.Handle("/sys/kbd/<enter>", func(event2 termui.Event) {
+			app.StreamPage = 0
+			app.UI.parPageStream.Text = "[" + strconv.Itoa(app.StreamPage+1) + "](fg-green)"
 			app.StreamType = 3
 			app.StreamID = 0
 			app.Search = app.UI.parNotiHelp.Text

@@ -13,11 +13,12 @@ import (
 const clientID = ""
 const redirectURI = "http://localhost:5454"
 
-const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [r] - обновить список стримов [q] - выйти из приложения\n [<right>, <left>] - бегать по вкладкам приложения [/] - поиск по Twitch [enter] - запустить streamlink"
+const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [pageup, pagedown] - выбор страницы списка стримов\n[<right>, <left>] - бегать по вкладкам приложения [r] - обновить список стримов [q] - выйти из приложения\n[/] - поиск по Twitch [enter] - запустить streamlink"
 
 // Type: 0 - sub, 1 - top, 2 - ru top, 3 - search
 
 type UIWidgets struct {
+	parPageStream *termui.Par
 	parStreamType *termui.Par
 	lsStreams     *termui.List
 	parName       *termui.Par
@@ -33,6 +34,7 @@ type Application struct {
 	Streams    []Stream
 	StreamID   int
 	StreamType int
+	StreamPage int
 	Search     string
 	Cmd        *exec.Cmd
 }
@@ -44,13 +46,14 @@ func main() {
 
 	app.StreamID = 0
 	app.StreamType = 0
+	app.StreamPage = 0
 
 	app.DB, err = initDB()
 	if err != nil {
 		log.Panic(err)
 	}
 
-	app.Streams = getStreams(app.StreamType, app.DB, "")
+	app.Streams = getStreams(app.StreamType, app.DB, "", app.StreamPage)
 
 	var strs []string
 	for id, stream := range app.Streams {
@@ -66,6 +69,10 @@ func main() {
 		panic(err)
 	}
 	defer termui.Close()
+
+	app.UI.parPageStream = termui.NewPar("[1](fg-green)")
+	app.UI.parPageStream.Height = 1
+	app.UI.parPageStream.Border = false
 
 	app.UI.parStreamType = termui.NewPar("[<Ваши подписки>](bg-blue) <Топ Twitch> <Топ RU Twitch> <Поиск>")
 	app.UI.parStreamType.Height = 1
@@ -98,7 +105,8 @@ func main() {
 
 	termui.Body.AddRows(
 		termui.NewRow(
-			termui.NewCol(10, 2, app.UI.parStreamType),
+			termui.NewCol(2, 0, app.UI.parPageStream),
+			termui.NewCol(8, 2, app.UI.parStreamType),
 		),
 		termui.NewRow(
 			termui.NewCol(3, 0, app.UI.lsStreams),
@@ -116,6 +124,8 @@ func main() {
 	termui.Handle("/sys/kbd/q", app.quitHandle)
 	termui.Handle("/sys/kbd/<down>", app.upDownHandle)
 	termui.Handle("/sys/kbd/<up>", app.upDownHandle)
+	termui.Handle("/sys/kbd/<next>", app.pageUpPageDownHandle)
+	termui.Handle("/sys/kbd/<previous>", app.pageUpPageDownHandle)
 	termui.Handle("/sys/kbd/<right>", app.leftRightHandle)
 	termui.Handle("/sys/kbd/<left>", app.leftRightHandle)
 	termui.Handle("/sys/kbd/r", app.updateHandle)

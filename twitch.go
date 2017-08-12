@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -46,10 +47,11 @@ type Stream struct {
 	Length      int
 }
 
-func (tw *TW) GetOnline(oauth string) (streams []Stream) {
+func (tw *TW) GetOnline(oauth string, page int) (streams []Stream) {
 	u := url.Values{}
 	u.Set("limit", "10")
 	u.Set("stream_type", "live")
+	u.Set("offset", strconv.Itoa(page*10))
 	body := tw.connect("streams/followed?"+u.Encode(), oauth)
 
 	type jsonTW struct {
@@ -89,10 +91,11 @@ func (tw *TW) GetOnline(oauth string) (streams []Stream) {
 	return streams
 }
 
-func (tw *TW) GetLive(lang string) (streams []Stream) {
+func (tw *TW) GetLive(lang string, page int) (streams []Stream) {
 	u := url.Values{}
 	u.Set("limit", "10")
 	u.Set("stream_type", "live")
+	u.Set("offset", strconv.Itoa(page*10))
 	var body []byte
 	if lang == "" {
 		body = tw.connect("streams?"+u.Encode(), "")
@@ -138,10 +141,11 @@ func (tw *TW) GetLive(lang string) (streams []Stream) {
 	return streams
 }
 
-func (tw *TW) GetSearch(search string) (streams []Stream) {
+func (tw *TW) GetSearch(search string, page int) (streams []Stream) {
 	u := url.Values{}
 	u.Set("limit", "10")
 	u.Set("query", search)
+	u.Set("offset", strconv.Itoa(page*10))
 
 	body := tw.connect("search/streams?"+u.Encode(), "")
 
