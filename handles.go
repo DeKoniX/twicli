@@ -26,12 +26,12 @@ func (app *Application) upDownHandle(event termui.Event) {
 
 	switch event.Path {
 	case "/sys/kbd/<down>":
-		app.StreamID += 1
+		app.StreamID++
 		if app.StreamID > streamCount {
 			app.StreamID = 0
 		}
 	case "/sys/kbd/<up>":
-		app.StreamID -= 1
+		app.StreamID--
 		if app.StreamID < 0 {
 			app.StreamID = streamCount
 		}
@@ -43,10 +43,10 @@ func (app *Application) pageUpPageDownHandle(event termui.Event) {
 	app.StreamID = 0
 	switch event.Path {
 	case "/sys/kbd/<next>":
-		app.StreamPage += 1
+		app.StreamPage++
 	case "/sys/kbd/<previous>":
 		if app.StreamPage != 0 {
-			app.StreamPage -= 1
+			app.StreamPage--
 		}
 	}
 	app.UI.parPageStream.Text = "[" + strconv.Itoa(app.StreamPage+1) + "](fg-green)"
@@ -59,13 +59,13 @@ func (app *Application) leftRightHandle(event termui.Event) {
 	var streamTypeCount = 3
 	switch event.Path {
 	case "/sys/kbd/<right>":
-		app.StreamType += 1
+		app.StreamType++
 
 		if app.StreamType > streamTypeCount-1 && app.Search == "" || app.StreamType > streamTypeCount {
 			app.StreamType = 0
 		}
 	case "/sys/kbd/<left>":
-		app.StreamType -= 1
+		app.StreamType--
 
 		if app.StreamType < 0 {
 			if app.Search != "" {

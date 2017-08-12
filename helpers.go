@@ -20,7 +20,8 @@ func (app *Application) updateStreamList(update bool, search string) {
 		termui.Render(app.UI.parNotiHelp)
 		time.Sleep(10 * time.Millisecond)
 		app.UI.parNotiHelp.Text = helpText
-		app.Streams = getStreams(app.StreamType, app.DB, search, app.StreamPage)
+		app.Streams = app.getStreams(app.StreamType, app.DB, search, app.StreamPage)
+		app.StreamID = 0
 		if search != "" {
 			app.UI.parNotiHelp.Text = helpText + "\n Поиск: [" + app.Search + "](fg-blue)"
 		}
@@ -84,16 +85,14 @@ func videoLen(len int) (strLength string) {
 }
 
 // TODO: err ->
-func getStreams(streamsType int, dataBase DB, search string, page int) (streams []Stream) {
-	tw := TWInit(clientID, redirectURI)
-
+func (app *Application) getStreams(streamsType int, dataBase DB, search string, page int) (streams []Stream) {
 	switch streamsType {
 	case 1:
-		streams = tw.GetLive("", page)
+		streams = app.TW.GetLive("", page)
 	case 2:
-		streams = tw.GetLive("ru", page)
+		streams = app.TW.GetLive("ru", page)
 	case 3:
-		streams = tw.GetSearch(search, page)
+		streams = app.TW.GetSearch(search, page)
 	case 0:
 		accessTokenRow, err := dataBase.SelectAccessToken()
 		if err != nil {
@@ -124,7 +123,7 @@ func getStreams(streamsType int, dataBase DB, search string, page int) (streams 
 				log.Panic(err)
 			}
 		}
-		streams = tw.GetOnline(accessTokenRow.accessToken, page)
+		streams = app.TW.GetOnline(accessTokenRow.accessToken, page)
 	}
 	return streams
 }

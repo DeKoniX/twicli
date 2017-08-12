@@ -37,6 +37,7 @@ type Application struct {
 	StreamPage int
 	Search     string
 	Cmd        *exec.Cmd
+	TW         *TW
 }
 
 func main() {
@@ -52,8 +53,9 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+	app.TW = TWInit(clientID, redirectURI)
 
-	app.Streams = getStreams(app.StreamType, app.DB, "", app.StreamPage)
+	app.Streams = app.getStreams(app.StreamType, app.DB, "", app.StreamPage)
 
 	var strs []string
 	for id, stream := range app.Streams {
