@@ -113,9 +113,7 @@ func (app *Application) runMusicHandle(event termui.Event) {
 func (app *Application) searchHandle(event termui.Event) {
 	if event.Path == "/sys/kbd//" {
 		app.Search = ""
-		app.UI.parNotiHelp.Text = ""
-		app.UI.parNotiHelp.BorderLabel = "Поиск:"
-		app.UI.parNotiHelp.Border = true
+		app.UI.parNotiHelp.Text = "Поиск:"
 		termui.Render(app.UI.parNotiHelp)
 
 		myHandlers := make(map[string]func(termui.Event))
@@ -126,17 +124,21 @@ func (app *Application) searchHandle(event termui.Event) {
 
 		termui.Handle("/sys/kbd", func(event2 termui.Event) {
 			keys := strings.Split(event2.Path, "/")
-			app.UI.parNotiHelp.Text = app.UI.parNotiHelp.Text + keys[len(keys)-1]
+			app.Search += keys[len(keys)-1]
+			app.UI.parNotiHelp.Text = "Поиск: " + app.Search
 			termui.Render(app.UI.parNotiHelp)
 		})
 
 		termui.Handle("/sys/kbd/<space>", func(event2 termui.Event) {
-			app.UI.parNotiHelp.Text = app.UI.parNotiHelp.Text + " "
+			app.Search += " "
+			app.UI.parNotiHelp.Text = "Поиск: " + app.Search
 			termui.Render(app.UI.parNotiHelp)
 		})
 
 		termui.Handle("/sys/kbd/C-8", func(event2 termui.Event) {
-			app.UI.parNotiHelp.Text = app.UI.parNotiHelp.Text[0 : len(app.UI.parNotiHelp.Text)-1]
+			runes := []rune(app.Search)
+			app.Search = string(runes[:len(runes)-1])
+			app.UI.parNotiHelp.Text = "Поиск: " + app.Search
 			termui.Render(app.UI.parNotiHelp)
 		})
 
@@ -145,11 +147,8 @@ func (app *Application) searchHandle(event termui.Event) {
 			app.UI.parPageStream.Text = "[" + strconv.Itoa(app.StreamPage+1) + "](fg-green)"
 			app.StreamType = 3
 			app.StreamID = 0
-			app.Search = app.UI.parNotiHelp.Text
 			app.updateStreamList(true, app.Search)
 			app.UI.parNotiHelp.Text = helpText + "\n Поиск: [" + app.Search + "](fg-blue)"
-			app.UI.parNotiHelp.BorderLabel = ""
-			app.UI.parNotiHelp.Border = false
 			app.UI.parStreamType.Text = "<Ваши подписки> <Топ Twitch> <Топ RU Twitch> [<Поиск>](bg-blue)"
 
 			termui.Render(termui.Body)
