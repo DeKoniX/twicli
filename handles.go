@@ -1,13 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"log"
-	"os"
-	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gizak/termui"
 )
@@ -108,29 +103,11 @@ func (app *Application) updateHandle(event termui.Event) {
 }
 
 func (app *Application) runHandle(event termui.Event) {
-	if len(app.Streams) > 0 {
-		if app.Cmd != nil {
-			app.Cmd.Process.Kill()
-			app.Cmd = nil
-			time.Sleep(10 * time.Millisecond)
-		}
-		app.UI.parNotiHelp.Text = "[Запускаю streamlink](fg-red)"
-		termui.Render(app.UI.parNotiHelp)
-		app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", app.Streams[app.StreamID].URL)
-		var out bytes.Buffer
-		app.Cmd.Stdout = &out
-		err := app.Cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		go func() {
-			app.Cmd.Wait()
-			f, _ := os.Create("out")
-			f.Write(out.Bytes())
-			app.UI.parNotiHelp.Text = helpText
-			termui.Render(app.UI.parNotiHelp)
-		}()
-	}
+	app.runStreamlink(true)
+}
+
+func (app *Application) runMusicHandle(event termui.Event) {
+	app.runStreamlink(false)
 }
 
 func (app *Application) searchHandle(event termui.Event) {

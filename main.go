@@ -13,12 +13,13 @@ import (
 const clientID = ""
 const redirectURI = "http://localhost:5454"
 
-const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [pageup, pagedown] - выбор страницы списка стримов\n[<right>, <left>] - бегать по вкладкам приложения [r] - обновить список стримов [q] - выйти из приложения\n[/] - поиск по Twitch [enter] - запустить streamlink"
+const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [pageup, pagedown] - выбор страницы списка стримов\n[<right>, <left>] - бегать по вкладкам приложения [r] - обновить список стримов [q] - выйти из приложения\n[/] - поиск по Twitch [enter] - запустить streamlink [\\] - запустить streamlink(audio only)"
 
 // Type: 0 - sub, 1 - top, 2 - ru top, 3 - search
 
 type UIWidgets struct {
 	parPageStream *termui.Par
+	parMusicOn    *termui.Par
 	parStreamType *termui.Par
 	lsStreams     *termui.List
 	parName       *termui.Par
@@ -76,6 +77,10 @@ func main() {
 	app.UI.parPageStream.Height = 1
 	app.UI.parPageStream.Border = false
 
+	app.UI.parMusicOn = termui.NewPar("")
+	app.UI.parMusicOn.Height = 1
+	app.UI.parMusicOn.Border = false
+
 	app.UI.parStreamType = termui.NewPar("[<Ваши подписки>](bg-blue) <Топ Twitch> <Топ RU Twitch> <Поиск>")
 	app.UI.parStreamType.Height = 1
 	app.UI.parStreamType.Border = false
@@ -102,13 +107,14 @@ func main() {
 	app.UI.parLength.BorderLabel = "Идет уже:"
 
 	app.UI.parNotiHelp = termui.NewPar(helpText)
-	app.UI.parNotiHelp.Height = 3
+	app.UI.parNotiHelp.Height = 4
 	app.UI.parNotiHelp.Border = false
 
 	termui.Body.AddRows(
 		termui.NewRow(
 			termui.NewCol(2, 0, app.UI.parPageStream),
-			termui.NewCol(8, 2, app.UI.parStreamType),
+			termui.NewCol(1, 0, app.UI.parMusicOn),
+			termui.NewCol(8, 1, app.UI.parStreamType),
 		),
 		termui.NewRow(
 			termui.NewCol(3, 0, app.UI.lsStreams),
@@ -132,6 +138,7 @@ func main() {
 	termui.Handle("/sys/kbd/<left>", app.leftRightHandle)
 	termui.Handle("/sys/kbd/r", app.updateHandle)
 	termui.Handle("/sys/kbd/<enter>", app.runHandle)
+	termui.Handle("/sys/kbd/\\", app.runMusicHandle)
 	termui.Handle("/sys/kbd//", app.searchHandle)
 	termui.Handle("/sys/wnd/resize", func(event termui.Event) {
 		termui.Body.Width = termui.TermWidth()

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -126,4 +128,37 @@ func (app *Application) getStreams(streamsType int, dataBase DB, search string, 
 		streams = app.TW.GetOnline(accessTokenRow.accessToken, page)
 	}
 	return streams
+}
+
+func (app *Application) runStreamlink(noMusic bool) {
+	if len(app.Streams) > 0 {
+		if app.Cmd != nil {
+			app.Cmd.Process.Kill()
+			app.Cmd = nil
+			time.Sleep(10 * time.Millisecond)
+		}
+		app.UI.parNotiHelp.Text = "[Запускаю streamlink](fg-red)"
+		termui.Render(app.UI.parNotiHelp)
+		app.UI.parMusicOn.Text = "[♫](fg-red)"
+		termui.Render(app.UI.parMusicOn)
+		if noMusic {
+			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", app.Streams[app.StreamID].URL)
+		} else {
+			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "audio_only", app.Streams[app.StreamID].URL)
+		}
+		var out bytes.Buffer
+		app.Cmd.Stdout = &out
+		err := app.Cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go func() {
+			app.Cmd.Wait()
+			f, _ := os.Create("out")
+			f.Write(out.Bytes())
+			app.updateStreamList(false, app.Search)
+			app.UI.parMusicOn.Text = ""
+			termui.Render(app.UI.parMusicOn)
+		}()
+	}
 }
