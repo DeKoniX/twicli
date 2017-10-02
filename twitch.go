@@ -23,17 +23,23 @@ func TWInit(clientID, redirectURI string) *TW {
 	}
 }
 
-func (tw *TW) connect(url, oauth string) (body []byte) {
+func (tw *TW) connect(url, oauth string) (body []byte, err error) {
 	req, _ := http.NewRequest("GET", "https://api.twitch.tv/kraken/"+url, nil)
 	req.Header.Set("Accept", "application/vnd.twitchtv.v5+json")
 	req.Header.Set("Client-ID", tw.ClientID)
 	if oauth != "" {
 		req.Header.Set("Authorization", "OAuth "+oauth)
 	}
-	resp, _ := tw.HTTPClient.Do(req)
-	body, _ = ioutil.ReadAll(resp.Body)
+	resp, err := tw.HTTPClient.Do(req)
+	if err != nil {
+		return body, err
+	}
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return body, err
+	}
 
-	return body
+	return body, nil
 }
 
 type Stream struct {
@@ -47,12 +53,15 @@ type Stream struct {
 	Length      int
 }
 
-func (tw *TW) GetOnline(oauth string, page int) (streams []Stream) {
+func (tw *TW) GetOnline(oauth string, page int) (streams []Stream, err error) {
 	u := url.Values{}
 	u.Set("limit", "10")
 	u.Set("stream_type", "live")
 	u.Set("offset", strconv.Itoa(page*10))
-	body := tw.connect("streams/followed?"+u.Encode(), oauth)
+	body, err := tw.connect("streams/followed?"+u.Encode(), oauth)
+	if err != nil {
+		return streams, err
+	}
 
 	type jsonTW struct {
 		Streams []struct {
@@ -88,20 +97,23 @@ func (tw *TW) GetOnline(oauth string, page int) (streams []Stream) {
 		})
 	}
 
-	return streams
+	return streams, nil
 }
 
-func (tw *TW) GetLive(lang string, page int) (streams []Stream) {
+func (tw *TW) GetLive(lang string, page int) (streams []Stream, err error) {
 	u := url.Values{}
 	u.Set("limit", "10")
 	u.Set("stream_type", "live")
 	u.Set("offset", strconv.Itoa(page*10))
 	var body []byte
 	if lang == "" {
-		body = tw.connect("streams?"+u.Encode(), "")
+		body, err = tw.connect("streams?"+u.Encode(), "")
 	} else {
 		u.Set("language", lang)
-		body = tw.connect("streams?"+u.Encode(), "")
+		body, err = tw.connect("streams?"+u.Encode(), "")
+	}
+	if err != nil {
+		return streams, err
 	}
 
 	type jsonTW struct {
@@ -138,16 +150,19 @@ func (tw *TW) GetLive(lang string, page int) (streams []Stream) {
 		})
 	}
 
-	return streams
+	return streams, nil
 }
 
-func (tw *TW) GetSearch(search string, page int) (streams []Stream) {
+func (tw *TW) GetSearch(search string, page int) (streams []Stream, err error) {
 	u := url.Values{}
 	u.Set("limit", "10")
 	u.Set("query", search)
 	u.Set("offset", strconv.Itoa(page*10))
 
-	body := tw.connect("search/streams?"+u.Encode(), "")
+	body, err := tw.connect("search/streams?"+u.Encode(), "")
+	if err != nil {
+		return streams, err
+	}
 
 	type jsonTW struct {
 		Streams []struct {
@@ -183,7 +198,7 @@ func (tw *TW) GetSearch(search string, page int) (streams []Stream) {
 		})
 	}
 
-	return streams
+	return streams, nil
 }
 
 func getLength(timeStream time.Time) int {

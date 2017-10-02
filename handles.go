@@ -11,6 +11,9 @@ func (app *Application) quitHandle(event termui.Event) {
 	if app.Cmd != nil {
 		app.Cmd.Process.Kill()
 		app.Cmd = nil
+		app.UI.parStreamOn.Text = ""
+		app.StreamNowName = ""
+		termui.Render(app.UI.parStreamOn)
 	} else {
 		termui.StopLoop()
 	}
@@ -103,11 +106,7 @@ func (app *Application) updateHandle(event termui.Event) {
 }
 
 func (app *Application) runHandle(event termui.Event) {
-	app.runStreamlink(true)
-}
-
-func (app *Application) runMusicHandle(event termui.Event) {
-	app.runStreamlink(false)
+	app.runStreamlink()
 }
 
 func (app *Application) searchHandle(event termui.Event) {
@@ -140,6 +139,15 @@ func (app *Application) searchHandle(event termui.Event) {
 			app.Search = string(runes[:len(runes)-1])
 			app.UI.parNotiHelp.Text = "Поиск: " + app.Search
 			termui.Render(app.UI.parNotiHelp)
+		})
+
+		termui.Handle("/sys/kbd/<escape>", func(event2 termui.Event) {
+			app.UI.parNotiHelp.Text = helpText
+			termui.Render(app.UI.parNotiHelp)
+			termui.ResetHandlers()
+			for path, handle := range myHandlers {
+				termui.Handle(path, handle)
+			}
 		})
 
 		termui.Handle("/sys/kbd/<enter>", func(event2 termui.Event) {

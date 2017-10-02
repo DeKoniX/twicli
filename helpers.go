@@ -15,6 +15,7 @@ import (
 )
 
 func (app *Application) updateStreamList(update bool, search string) {
+	var err error
 	var strs []string
 
 	if update {
@@ -22,7 +23,12 @@ func (app *Application) updateStreamList(update bool, search string) {
 		termui.Render(app.UI.parNotiHelp)
 		time.Sleep(10 * time.Millisecond)
 		app.UI.parNotiHelp.Text = helpText
-		app.Streams = app.getStreams(app.StreamType, app.DB, search, app.StreamPage)
+		app.Streams, err = app.getStreams(app.StreamType, app.DB, search, app.StreamPage)
+		if err != nil {
+			fmt.Println("Ошибка получения списка стримов: ", err)
+			os.Exit(2)
+		}
+
 		app.StreamID = 0
 		if search != "" {
 			app.UI.parNotiHelp.Text = helpText + "\n Поиск: [" + app.Search + "](fg-blue)"
@@ -86,19 +92,27 @@ func videoLen(len int) (strLength string) {
 	return strLength
 }
 
-// TODO: err ->
-func (app *Application) getStreams(streamsType int, dataBase DB, search string, page int) (streams []Stream) {
+func (app *Application) getStreams(streamsType int, dataBase DB, search string, page int) (streams []Stream, err error) {
 	switch streamsType {
 	case 1:
-		streams = app.TW.GetLive("", page)
+		streams, err = app.TW.GetLive("", page)
+		if err != nil {
+			return streams, err
+		}
 	case 2:
-		streams = app.TW.GetLive("ru", page)
+		streams, err = app.TW.GetLive("ru", page)
+		if err != nil {
+			return streams, err
+		}
 	case 3:
-		streams = app.TW.GetSearch(search, page)
+		streams, err = app.TW.GetSearch(search, page)
+		if err != nil {
+			return streams, err
+		}
 	case 0:
 		accessTokenRow, err := dataBase.SelectAccessToken()
 		if err != nil {
-			log.Panic(err)
+			return streams, err
 		}
 		if accessTokenRow.accessToken == "" {
 			u, _ := url.Parse("https://api.twitch.tv/kraken/oauth2/authorize")
@@ -114,7 +128,7 @@ func (app *Application) getStreams(streamsType int, dataBase DB, search string, 
 
 			l, err := StartHttpServer()
 			if err != nil {
-				panic(err)
+				return streams, err
 			}
 			for ShutdownServer == false {
 				time.Sleep(1 * time.Second)
@@ -122,30 +136,33 @@ func (app *Application) getStreams(streamsType int, dataBase DB, search string, 
 			l.Close()
 			accessTokenRow, err = dataBase.SelectAccessToken()
 			if err != nil {
-				log.Panic(err)
+				return streams, err
 			}
 		}
-		streams = app.TW.GetOnline(accessTokenRow.accessToken, page)
+		streams, err = app.TW.GetOnline(accessTokenRow.accessToken, page)
+		if err != nil {
+			return streams, err
+		}
 	}
-	return streams
+	return streams, nil
 }
 
-func (app *Application) runStreamlink(noMusic bool) {
+func (app *Application) runStreamlink() {
 	if len(app.Streams) > 0 {
 		if app.Cmd != nil {
 			app.Cmd.Process.Kill()
 			app.Cmd = nil
+			app.UI.parStreamOn.Text = ""
+			app.StreamNowName = ""
+			termui.Render(app.UI.parStreamOn)
 			time.Sleep(10 * time.Millisecond)
 		}
 		app.UI.parNotiHelp.Text = "[Запускаю streamlink](fg-red)"
 		termui.Render(app.UI.parNotiHelp)
-		app.UI.parMusicOn.Text = "[♫](fg-red)"
-		termui.Render(app.UI.parMusicOn)
-		if noMusic {
-			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", app.Streams[app.StreamID].URL)
-		} else {
-			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "audio_only", app.Streams[app.StreamID].URL)
-		}
+		app.StreamNowName = app.Streams[app.StreamID].DisplayName
+		app.UI.parStreamOn.Text = "[" + app.StreamNowName + "](fg-red)"
+		termui.Render(app.UI.parStreamOn)
+		app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", app.Streams[app.StreamID].URL)
 		var out bytes.Buffer
 		app.Cmd.Stdout = &out
 		err := app.Cmd.Start()
@@ -157,8 +174,6 @@ func (app *Application) runStreamlink(noMusic bool) {
 			f, _ := os.Create("out")
 			f.Write(out.Bytes())
 			app.updateStreamList(false, app.Search)
-			app.UI.parMusicOn.Text = ""
-			termui.Render(app.UI.parMusicOn)
 		}()
 	}
 }

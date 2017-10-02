@@ -1,11 +1,13 @@
 package main
 
 import (
-	"log"
 	"os/exec"
 	"time"
 
 	"strconv"
+
+	"fmt"
+	"os"
 
 	"github.com/gizak/termui"
 )
@@ -19,7 +21,7 @@ const helpText = "[<up>, <down>] - вверх, вниз по списку дос
 
 type UIWidgets struct {
 	parPageStream *termui.Par
-	parMusicOn    *termui.Par
+	parStreamOn   *termui.Par
 	parStreamType *termui.Par
 	lsStreams     *termui.List
 	parName       *termui.Par
@@ -30,20 +32,20 @@ type UIWidgets struct {
 }
 
 type Application struct {
-	UI         UIWidgets
-	DB         DB
-	Streams    []Stream
-	StreamID   int
-	StreamType int
-	StreamPage int
-	Search     string
-	Cmd        *exec.Cmd
-	TW         *TW
+	Cmd           *exec.Cmd
+	DB            DB
+	Search        string
+	StreamID      int
+	StreamNowName string
+	StreamPage    int
+	StreamType    int
+	Streams       []Stream
+	TW            *TW
+	UI            UIWidgets
 }
 
 func main() {
 	var app Application
-
 	var err error
 
 	app.StreamID = 0
@@ -52,11 +54,16 @@ func main() {
 
 	app.DB, err = initDB()
 	if err != nil {
-		log.Panic(err)
+		fmt.Println("Ошибка инициализации базы данных: ", err)
+		os.Exit(2)
 	}
 	app.TW = TWInit(clientID, redirectURI)
 
-	app.Streams = app.getStreams(app.StreamType, app.DB, "", app.StreamPage)
+	app.Streams, err = app.getStreams(app.StreamType, app.DB, "", app.StreamPage)
+	if err != nil {
+		fmt.Println("Ошибка получения списка стримов: ", err)
+		os.Exit(2)
+	}
 
 	var strs []string
 	for id, stream := range app.Streams {
@@ -69,7 +76,8 @@ func main() {
 
 	err = termui.Init()
 	if err != nil {
-		panic(err)
+		fmt.Println("Ошибка инициализации termui: ", err)
+		os.Exit(2)
 	}
 	defer termui.Close()
 
@@ -77,9 +85,9 @@ func main() {
 	app.UI.parPageStream.Height = 1
 	app.UI.parPageStream.Border = false
 
-	app.UI.parMusicOn = termui.NewPar("")
-	app.UI.parMusicOn.Height = 1
-	app.UI.parMusicOn.Border = false
+	app.UI.parStreamOn = termui.NewPar("")
+	app.UI.parStreamOn.Height = 1
+	app.UI.parStreamOn.Border = false
 
 	app.UI.parStreamType = termui.NewPar("[<Ваши подписки>](bg-blue) <Топ Twitch> <Топ RU Twitch> <Поиск>")
 	app.UI.parStreamType.Height = 1
@@ -113,7 +121,7 @@ func main() {
 	termui.Body.AddRows(
 		termui.NewRow(
 			termui.NewCol(2, 0, app.UI.parPageStream),
-			termui.NewCol(1, 0, app.UI.parMusicOn),
+			termui.NewCol(1, 0, app.UI.parStreamOn),
 			termui.NewCol(8, 1, app.UI.parStreamType),
 		),
 		termui.NewRow(
@@ -138,7 +146,6 @@ func main() {
 	termui.Handle("/sys/kbd/<left>", app.leftRightHandle)
 	termui.Handle("/sys/kbd/r", app.updateHandle)
 	termui.Handle("/sys/kbd/<enter>", app.runHandle)
-	termui.Handle("/sys/kbd/\\", app.runMusicHandle)
 	termui.Handle("/sys/kbd//", app.searchHandle)
 	termui.Handle("/sys/wnd/resize", func(event termui.Event) {
 		termui.Body.Width = termui.TermWidth()
