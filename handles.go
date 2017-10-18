@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"fmt"
+
 	"github.com/gizak/termui"
 )
 
@@ -106,7 +108,86 @@ func (app *Application) updateHandle(event termui.Event) {
 }
 
 func (app *Application) runHandle(event termui.Event) {
-	app.runStreamlink()
+	app.runStreamlink("")
+}
+
+func (app *Application) runQualityHandle(event termui.Event) {
+	app.QualityID = 0
+	app.UI.parNotiHelp.Text = "[Получаю список качества стрима](fg-red)"
+	termui.Render(app.UI.parNotiHelp)
+
+	quality, err := app.getStreamlinkQuality()
+	if err != nil {
+		app.UI.parNotiHelp.Text = fmt.Sprint(err)
+		termui.Render(app.UI.parNotiHelp)
+		return
+	}
+
+	qfunc := func(quality []string) (strs []string) {
+		for id, qualityString := range quality {
+			if id == app.QualityID {
+				strs = append(strs, "["+qualityString+"](fg-white,bg-green)")
+			} else {
+				strs = append(strs, qualityString)
+			}
+		}
+		return strs
+	}
+
+	app.UI.lsStreams.BorderLabel = "Качество:"
+	app.UI.lsStreams.Items = qfunc(quality)
+	app.UI.parNotiHelp.Text = helpText
+	termui.Render(app.UI.lsStreams)
+	termui.Render(app.UI.parNotiHelp)
+
+	myHandlers := make(map[string]func(termui.Event))
+	for path, handle := range termui.DefaultEvtStream.Handlers {
+		myHandlers[path] = handle
+	}
+	termui.ResetHandlers()
+
+	var qualityCount = len(quality) - 1
+	termui.Handle("/sys/kbd/<down>", func(event2 termui.Event) {
+		app.QualityID++
+		if app.QualityID > qualityCount {
+			app.QualityID = 0
+		}
+		app.UI.lsStreams.Items = qfunc(quality)
+		termui.Render(app.UI.lsStreams)
+	})
+	termui.Handle("/sys/kbd/<up>", func(event2 termui.Event) {
+		app.QualityID--
+		if app.QualityID < 0 {
+			app.QualityID = qualityCount
+		}
+		app.UI.lsStreams.Items = qfunc(quality)
+		termui.Render(app.UI.lsStreams)
+	})
+	termui.Handle("/sys/kbd/<escape>", func(event2 termui.Event) {
+		termui.ResetHandlers()
+		for path, handle := range myHandlers {
+			termui.Handle(path, handle)
+		}
+		app.UI.lsStreams.BorderLabel = "Стримы:"
+		app.updateStreamList(true, app.Search)
+	})
+	termui.Handle("/sys/kbd/q", func(event2 termui.Event) {
+		termui.ResetHandlers()
+		for path, handle := range myHandlers {
+			termui.Handle(path, handle)
+		}
+		app.UI.lsStreams.BorderLabel = "Стримы:"
+		app.updateStreamList(true, app.Search)
+	})
+	termui.Handle("/sys/kbd/<enter>", func(event2 termui.Event) {
+		termui.ResetHandlers()
+		for path, handle := range myHandlers {
+			termui.Handle(path, handle)
+		}
+		app.runStreamlink(quality[app.QualityID])
+		app.UI.lsStreams.BorderLabel = "Стримы:"
+		app.updateStreamList(true, app.Search)
+	})
 }
 
 func (app *Application) searchHandle(event termui.Event) {

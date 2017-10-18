@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -10,6 +11,10 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	"regexp"
+
+	"strings"
 
 	"github.com/gizak/termui"
 )
@@ -147,7 +152,7 @@ func (app *Application) getStreams(streamsType int, dataBase DB, search string, 
 	return streams, nil
 }
 
-func (app *Application) runStreamlink() {
+func (app *Application) runStreamlink(quality string) {
 	if len(app.Streams) > 0 {
 		if app.Cmd != nil {
 			app.Cmd.Process.Kill()
@@ -162,7 +167,11 @@ func (app *Application) runStreamlink() {
 		app.StreamNowName = app.Streams[app.StreamID].DisplayName
 		app.UI.parStreamOn.Text = "[" + app.StreamNowName + "](fg-red)"
 		termui.Render(app.UI.parStreamOn)
-		app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", app.Streams[app.StreamID].URL)
+		if quality == "" {
+			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", app.Streams[app.StreamID].URL)
+		} else {
+			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", app.Streams[app.StreamID].URL, quality)
+		}
 		var out bytes.Buffer
 		app.Cmd.Stdout = &out
 		err := app.Cmd.Start()
@@ -176,4 +185,26 @@ func (app *Application) runStreamlink() {
 			app.updateStreamList(false, app.Search)
 		}()
 	}
+}
+
+func (app *Application) getStreamlinkQuality() (quality []string, err error) {
+	cmd := exec.Command("streamlink", app.Streams[app.StreamID].URL)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return quality, err
+	}
+	str := out.String()
+
+	var qualityRegexp = regexp.MustCompile("Available streams: (.*)")
+	var deleteWordRegexp = regexp.MustCompile(`\ ?\([a-zA-Z]{1,10},?\ ?[a-zA-Z]{1,10}\)`)
+	r := qualityRegexp.FindStringSubmatch(str)
+	if len(r) < 1 {
+		return quality, errors.New("ERR Get quality stream")
+	}
+	str = deleteWordRegexp.ReplaceAllString(r[1], "")
+	quality = strings.Split(str, ", ")
+
+	return quality, nil
 }

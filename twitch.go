@@ -53,6 +53,20 @@ type Stream struct {
 	Length      int
 }
 
+type jsonTW struct {
+	Streams []struct {
+		Channel struct {
+			DisplayName string `json:"display_name"`
+			Name        string `json:"name"`
+			URL         string `json:"url"`
+			Status      string `json:"status"`
+		}
+		CreatedAt string `json:"created_at"`
+		Game      string `json:"game"`
+		Viewers   int    `json:"viewers"`
+	}
+}
+
 func (tw *TW) GetOnline(oauth string, page int) (streams []Stream, err error) {
 	u := url.Values{}
 	u.Set("limit", "10")
@@ -61,20 +75,6 @@ func (tw *TW) GetOnline(oauth string, page int) (streams []Stream, err error) {
 	body, err := tw.connect("streams/followed?"+u.Encode(), oauth)
 	if err != nil {
 		return streams, err
-	}
-
-	type jsonTW struct {
-		Streams []struct {
-			Channel struct {
-				DisplayName string `json:"display_name"`
-				Name        string `json:"name"`
-				URL         string `json:"url"`
-				Status      string `json:"status"`
-			}
-			CreatedAt string `json:"created_at"`
-			Game      string `json:"game"`
-			Viewers   int    `json:"viewers"`
-		}
 	}
 
 	var jsontw jsonTW
@@ -116,20 +116,6 @@ func (tw *TW) GetLive(lang string, page int) (streams []Stream, err error) {
 		return streams, err
 	}
 
-	type jsonTW struct {
-		Streams []struct {
-			Channel struct {
-				DisplayName string `json:"display_name"`
-				Name        string `json:"name"`
-				URL         string `json:"url"`
-				Status      string `json:"status"`
-			}
-			CreatedAt string `json:"created_at"`
-			Game      string `json:"game"`
-			Viewers   int    `json:"viewers"`
-		}
-	}
-
 	var jsontw jsonTW
 	json.Unmarshal(body, &jsontw)
 
@@ -162,20 +148,6 @@ func (tw *TW) GetSearch(search string, page int) (streams []Stream, err error) {
 	body, err := tw.connect("search/streams?"+u.Encode(), "")
 	if err != nil {
 		return streams, err
-	}
-
-	type jsonTW struct {
-		Streams []struct {
-			Channel struct {
-				DisplayName string `json:"display_name"`
-				Name        string `json:"name"`
-				URL         string `json:"url"`
-				Status      string `json:"status"`
-			}
-			CreatedAt string `json:"created_at"`
-			Game      string `json:"game"`
-			Viewers   int    `json:"viewers"`
-		}
 	}
 
 	var jsontw jsonTW

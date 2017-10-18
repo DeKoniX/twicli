@@ -15,9 +15,9 @@ import (
 const clientID = ""
 const redirectURI = "http://localhost:5454"
 
-const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [pageup, pagedown] - выбор страницы списка стримов\n[<right>, <left>] - бегать по вкладкам приложения [r] - обновить список стримов [q] - выйти из приложения\n[/] - поиск по Twitch [enter] - запустить streamlink [\\] - запустить streamlink(audio only)"
+const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [pageup, pagedown] - выбор страницы списка стримов\n[<right>, <left>] - бегать по вкладкам приложения [r] - обновить список стримов [q] - выйти из приложения\n[/] - поиск по Twitch [enter] - запустить streamlink [\\] - запустить streamlink(c выбором качества стрима)"
 
-// Type: 0 - sub, 1 - top, 2 - ru top, 3 - search
+// Type: 0 - sub, 1 - top, 2 - ru top, 3 - search, 4 - get quality
 
 type UIWidgets struct {
 	parPageStream *termui.Par
@@ -34,6 +34,7 @@ type UIWidgets struct {
 type Application struct {
 	Cmd           *exec.Cmd
 	DB            DB
+	QualityID     int
 	Search        string
 	StreamID      int
 	StreamNowName string
@@ -146,6 +147,7 @@ func main() {
 	termui.Handle("/sys/kbd/<left>", app.leftRightHandle)
 	termui.Handle("/sys/kbd/r", app.updateHandle)
 	termui.Handle("/sys/kbd/<enter>", app.runHandle)
+	termui.Handle("/sys/kbd/\\", app.runQualityHandle)
 	termui.Handle("/sys/kbd//", app.searchHandle)
 	termui.Handle("/sys/wnd/resize", func(event termui.Event) {
 		termui.Body.Width = termui.TermWidth()
