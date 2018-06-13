@@ -144,7 +144,7 @@ func (app *Application) runQualityHandle(event termui.Event) {
 	for path, handle := range termui.DefaultEvtStream.Handlers {
 		myHandlers[path] = handle
 	}
-	termui.ResetHandlers()
+	termui.DefaultEvtStream.ResetHandlers()
 
 	var qualityCount = len(quality) - 1
 	termui.Handle("/sys/kbd/<down>", func(event2 termui.Event) {
@@ -164,7 +164,7 @@ func (app *Application) runQualityHandle(event termui.Event) {
 		termui.Render(app.UI.lsStreams)
 	})
 	termui.Handle("/sys/kbd/<escape>", func(event2 termui.Event) {
-		termui.ResetHandlers()
+		termui.DefaultEvtStream.ResetHandlers()
 		for path, handle := range myHandlers {
 			termui.Handle(path, handle)
 		}
@@ -172,7 +172,7 @@ func (app *Application) runQualityHandle(event termui.Event) {
 		app.updateStreamList(true, app.Search)
 	})
 	termui.Handle("/sys/kbd/q", func(event2 termui.Event) {
-		termui.ResetHandlers()
+		termui.DefaultEvtStream.ResetHandlers()
 		for path, handle := range myHandlers {
 			termui.Handle(path, handle)
 		}
@@ -180,7 +180,7 @@ func (app *Application) runQualityHandle(event termui.Event) {
 		app.updateStreamList(true, app.Search)
 	})
 	termui.Handle("/sys/kbd/<enter>", func(event2 termui.Event) {
-		termui.ResetHandlers()
+		termui.DefaultEvtStream.ResetHandlers()
 		for path, handle := range myHandlers {
 			termui.Handle(path, handle)
 		}
@@ -200,7 +200,7 @@ func (app *Application) searchHandle(event termui.Event) {
 		for path, handle := range termui.DefaultEvtStream.Handlers {
 			myHandlers[path] = handle
 		}
-		termui.ResetHandlers()
+		termui.DefaultEvtStream.ResetHandlers()
 
 		termui.Handle("/sys/kbd", func(event2 termui.Event) {
 			keys := strings.Split(event2.Path, "/")
@@ -225,7 +225,7 @@ func (app *Application) searchHandle(event termui.Event) {
 		termui.Handle("/sys/kbd/<escape>", func(event2 termui.Event) {
 			app.UI.parNotiHelp.Text = helpText
 			termui.Render(app.UI.parNotiHelp)
-			termui.ResetHandlers()
+			termui.DefaultEvtStream.ResetHandlers()
 			for path, handle := range myHandlers {
 				termui.Handle(path, handle)
 			}
@@ -242,7 +242,7 @@ func (app *Application) searchHandle(event termui.Event) {
 
 			termui.Render(termui.Body)
 
-			termui.ResetHandlers()
+			termui.DefaultEvtStream.ResetHandlers()
 			for path, handle := range myHandlers {
 				termui.Handle(path, handle)
 			}
