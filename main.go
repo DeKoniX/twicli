@@ -12,7 +12,7 @@ import (
 	"github.com/gizak/termui"
 )
 
-const clientID = ""
+const clientID = "jcmupzvav5wezhdo0phjwcsvkc6t00"
 const redirectURI = "http://localhost:5454"
 
 const helpText = "[<up>, <down>] - вверх, вниз по списку доступных стримов [pageup, pagedown] - выбор страницы списка стримов\n[<right>, <left>] - бегать по вкладкам приложения [r] - обновить список стримов [q] - выйти из приложения\n[/] - поиск по Twitch [enter] - запустить streamlink [\\] - запустить streamlink(c выбором качества стрима)"

@@ -51,6 +51,8 @@ type Stream struct {
 	Viewers     int
 	Date        time.Time
 	Length      int
+	Type        string
+	StreamType  string
 }
 
 type jsonTW struct {
@@ -61,9 +63,10 @@ type jsonTW struct {
 			URL         string `json:"url"`
 			Status      string `json:"status"`
 		}
-		CreatedAt string `json:"created_at"`
-		Game      string `json:"game"`
-		Viewers   int    `json:"viewers"`
+		CreatedAt  string `json:"created_at"`
+		Game       string `json:"game"`
+		Viewers    int    `json:"viewers"`
+		StreamType string `json:"stream_type"`
 	}
 }
 
@@ -80,22 +83,7 @@ func (tw *TW) GetOnline(oauth string, page int) (streams []Stream, err error) {
 	var jsontw jsonTW
 	json.Unmarshal(body, &jsontw)
 
-	for _, stream := range jsontw.Streams {
-		twTime, err := time.Parse(time.RFC3339, stream.CreatedAt)
-		if err != nil {
-			twTime = time.Now()
-		}
-		streams = append(streams, Stream{
-			DisplayName: stream.Channel.DisplayName,
-			Game:        stream.Game,
-			Name:        stream.Channel.Name,
-			Status:      stream.Channel.Status,
-			URL:         stream.Channel.URL,
-			Viewers:     stream.Viewers,
-			Date:        twTime,
-			Length:      getLength(twTime),
-		})
-	}
+	streams = getStreams(jsontw)
 
 	return streams, nil
 }
@@ -119,22 +107,7 @@ func (tw *TW) GetLive(lang string, page int) (streams []Stream, err error) {
 	var jsontw jsonTW
 	json.Unmarshal(body, &jsontw)
 
-	for _, stream := range jsontw.Streams {
-		twTime, err := time.Parse(time.RFC3339, stream.CreatedAt)
-		if err != nil {
-			twTime = time.Now()
-		}
-		streams = append(streams, Stream{
-			DisplayName: stream.Channel.DisplayName,
-			Game:        stream.Game,
-			Name:        stream.Channel.Name,
-			Status:      stream.Channel.Status,
-			URL:         stream.Channel.URL,
-			Viewers:     stream.Viewers,
-			Date:        twTime,
-			Length:      getLength(twTime),
-		})
-	}
+	streams = getStreams(jsontw)
 
 	return streams, nil
 }
@@ -153,24 +126,41 @@ func (tw *TW) GetSearch(search string, page int) (streams []Stream, err error) {
 	var jsontw jsonTW
 	json.Unmarshal(body, &jsontw)
 
+	streams = getStreams(jsontw)
+
+	return streams, nil
+}
+
+func getStreams(jsontw jsonTW) (streams []Stream) {
+	var displayName, status string
+
 	for _, stream := range jsontw.Streams {
 		twTime, err := time.Parse(time.RFC3339, stream.CreatedAt)
 		if err != nil {
 			twTime = time.Now()
 		}
+		switch stream.StreamType {
+		case "rerun":
+			displayName = "[R]" + stream.Channel.DisplayName
+			status = "[RERUN] " + stream.Channel.Status
+		default:
+			displayName = stream.Channel.DisplayName
+			status = stream.Channel.Status
+		}
 		streams = append(streams, Stream{
-			DisplayName: stream.Channel.DisplayName,
+			DisplayName: displayName,
 			Game:        stream.Game,
 			Name:        stream.Channel.Name,
-			Status:      stream.Channel.Status,
+			Status:      status,
 			URL:         stream.Channel.URL,
 			Viewers:     stream.Viewers,
 			Date:        twTime,
 			Length:      getLength(twTime),
+			StreamType:  stream.StreamType,
 		})
 	}
 
-	return streams, nil
+	return streams
 }
 
 func getLength(timeStream time.Time) int {
