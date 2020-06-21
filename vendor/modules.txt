@@ -1,0 +1,22 @@
+# github.com/davecgh/go-spew v1.1.1
+## explicit
+# github.com/gizak/termui v2.3.0+incompatible
+## explicit
+github.com/gizak/termui
+# github.com/maruel/panicparse v1.1.2-0.20180806203336-f20d4c4d746f
+## explicit
+github.com/maruel/panicparse/stack
+# github.com/mattn/go-runewidth v0.0.4
+## explicit
+github.com/mattn/go-runewidth
+# github.com/mattn/go-sqlite3 v1.10.0
+## explicit
+github.com/mattn/go-sqlite3
+# github.com/mitchellh/go-wordwrap v1.0.0
+## explicit
+github.com/mitchellh/go-wordwrap
+# github.com/nsf/termbox-go v0.0.0-20190325093121-288510b9734e
+## explicit
+github.com/nsf/termbox-go
+# github.com/stretchr/testify v1.6.1
+## explicit
