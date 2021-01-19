@@ -3,20 +3,22 @@
 # github.com/gizak/termui v2.3.0+incompatible
 ## explicit
 github.com/gizak/termui
-# github.com/maruel/panicparse v1.1.2-0.20180806203336-f20d4c4d746f
+# github.com/maruel/panicparse v1.6.1
 ## explicit
 github.com/maruel/panicparse/stack
-# github.com/mattn/go-runewidth v0.0.4
+# github.com/mattn/go-runewidth v0.0.10
 ## explicit
 github.com/mattn/go-runewidth
-# github.com/mattn/go-sqlite3 v1.10.0
+# github.com/mattn/go-sqlite3 v1.14.6
 ## explicit
 github.com/mattn/go-sqlite3
-# github.com/mitchellh/go-wordwrap v1.0.0
+# github.com/mitchellh/go-wordwrap v1.0.1
 ## explicit
 github.com/mitchellh/go-wordwrap
-# github.com/nsf/termbox-go v0.0.0-20190325093121-288510b9734e
+# github.com/nsf/termbox-go v0.0.0-20210114135735-d04385b850e8
 ## explicit
 github.com/nsf/termbox-go
+# github.com/rivo/uniseg v0.1.0
+github.com/rivo/uniseg
 # github.com/stretchr/testify v1.6.1
 ## explicit

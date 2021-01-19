@@ -168,9 +168,21 @@ func (app *Application) runStreamlink(quality string) {
 		app.UI.parStreamOn.Text = "[" + app.StreamNowName + "](fg-red)"
 		termui.Render(app.UI.parStreamOn)
 		if quality == "" {
-			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", "--default-stream", "720p,720p60,best,source", app.Streams[app.StreamID].URL)
+			app.Cmd = exec.Command(
+				"streamlink",
+				"-p", "mpv --fs",
+				"--default-stream", "720p,720p60,best,source",
+				"--twitch-disable-ads",
+				app.Streams[app.StreamID].URL,
+			)
 		} else {
-			app.Cmd = exec.Command("streamlink", "-p", "mpv --fs", app.Streams[app.StreamID].URL, quality)
+			app.Cmd = exec.Command(
+				"streamlink",
+				"-p", "mpv --fs",
+				"--twitch-disable-ads",
+				app.Streams[app.StreamID].URL,
+				quality,
+			)
 		}
 		var out bytes.Buffer
 		app.Cmd.Stdout = &out
